@@ -242,7 +242,6 @@ missing_data <- d.test.s[missing_rows, ]
 print(missing_data)
 d.test.s <- na.omit(d.test.s)
 
-
 # Assuming dat.s contains both series 1 and 2
 # Check unique series
 unique_series <- unique(dat.s$series_id)
@@ -256,6 +255,14 @@ trend_map <- data.frame(
 
 print(trend_map)
 
+
+# Having the data arrange in ascending order in respect to time
+
+d.train.s.time <- d.train.s %>%
+  arrange(time)
+
+d.test.s.time <- d.test.s %>%
+  arrange(time)
 
 # Model
 
@@ -362,7 +369,7 @@ summary(baseline_model)
 
 #### Time series ####
 
-# attempt using guassian structure
+# Attempt running the time series using the first guassian model (this is just because it runs quicker)
 baseline_model_s = mvgam(flow ~ rainfall ,
                          trend_model = "AR1",
                          family = gaussian(),
@@ -378,7 +385,23 @@ mcmc_plot(baseline_model_s, type = "trace", variable = c("rainfall", "ar3[1]", "
 plot(baseline_model_s, type = "forecast")
 summary(baseline_model_s)
 
-### Attempt using treand_map
+# Attempt running the time series using the first guassian model (with the data structured in respect to time)
+baseline_model_s.time = mvgam(flow ~ rainfall ,
+                         trend_model = "AR1",
+                         family = gaussian(),
+                         data = d.train.s.time,
+                         newdata = d.test.s.time,
+                         noncentred = T,
+                         burnin = 5000,
+                         samples = 5000,
+                         thin = 9)
+
+pairs(baseline_model_s.time)
+mcmc_plot(baseline_model_s.time, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
+plot(baseline_model_s.time, type = "forecast")
+summary(baseline_model_s.time)
+
+# Attempt using treand_map
 
 full_mod <- mvgam(flow ~ series_id -1 ,
                   trend_formula = ~ rainfall,
@@ -386,13 +409,31 @@ full_mod <- mvgam(flow ~ series_id -1 ,
                   noncentred = TRUE,
                   trend_map = trend_map,
                   family = poisson(),
-                  data = d.train.s.1,
+                  data = d.train.s,
+                  newdata = d.train.s,
                   silent = 2)
 
 pairs(full_mod)
 mcmc_plot(full_mod, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
 plot(full_mod, type = "forecast")
 summary(full_mod)
+
+# Attempt using treand_map (with the data sturctured in respect to time)
+
+full_mod_time <- mvgam(flow ~ series_id -1 ,
+                  trend_formula = ~ rainfall,
+                  trend_model = "AR1",
+                  noncentred = TRUE,
+                  trend_map = trend_map,
+                  family = poisson(),
+                  data = d.train.s,
+                  newdata = d.train.s.time,
+                  silent = 2)
+
+pairs(full_mod_time)
+mcmc_plot(full_mod_time, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
+plot(full_mod_time, type = "forecast")
+summary(full_mod_time)
 
 
 
