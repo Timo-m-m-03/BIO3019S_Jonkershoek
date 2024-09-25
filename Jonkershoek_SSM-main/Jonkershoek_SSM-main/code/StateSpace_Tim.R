@@ -10,9 +10,9 @@ library(slider)
 library(ggpubr)
 
 # Get data
-flow <- read_csv("data/Lambrechtbos_B_Belfort_stream_flow_volume_March_1961_October_2008.csv")
+flow <- read_csv("Jonkershoek_SSM-main/Jonkershoek_SSM-main/data/Lambrechtbos_B_Belfort_stream_flow_volume_March_1961_October_2008.csv")
 #flow2 <- read_csv("data/Langrivier_Belfort_stream_flow_volume_March_1961_October_2008.csv")
-rain <- read_csv("data/10B_manual_monthly_rainfall_Apr1944_Mar1991.csv")
+rain <- read_csv("Jonkershoek_SSM-main/Jonkershoek_SSM-main/data/10B_manual_monthly_rainfall_Apr1944_Mar1991.csv")
 
 #flow <- bind_rows(list(tibble(flow,Site = "LbosB"), tibble(flow2,Site = "Langrivier")))
 
@@ -85,6 +85,175 @@ data_train <- slice(dat, 1:129) # before pines
 data_pines <- slice(dat, 130:nrow(dat)) # with pines
 data_test <- slice(dat, 130:142) # with pines and NAs
 data_new <- slice(dat, 130:142) %>% mutate(flow = NA)
+
+#### Time series ####
+
+##Time series stuff##
+
+rain <- read_csv("Jonkershoek_SSM-main/Jonkershoek_SSM-main/data/10B_manual_monthly_rainfall_Apr1944_Mar1991.csv")
+
+# SERIES 1 - with pines
+
+df1 <- read_csv("Jonkershoek_SSM-main/Jonkershoek_SSM-main/data/Lambrechtbos_B_Belfort_stream_flow_volume_March_1961_October_2008.csv")
+
+# Aggregate to monthly flows 
+m.df1 <- df1 %>% 
+  mutate(YearMon = format(Date, '%Y-%b')) %>%
+  group_by(YearMon) %>%
+  summarise(flow = sum(Value, na.rm = T))
+
+
+# Format date column, add season column for rainfall and join streamflow 
+dat.1 <- rain %>% mutate(YearMon = format(Date, '%Y-%b')) %>%
+  mutate(season = match(format(Date, '%b'), month.abb)) %>%
+  rename(rainfall = Value) %>%
+  select(YearMon, rainfall, season, Date) %>%
+  left_join(m.df1) %>%
+  na.omit() %>%
+  filter(flow > 0)
+
+# Add "time" as a numbered vector 1,2,3,etc 
+dat.1 <- dat.1 %>%
+  mutate(time = rev(1:nrow(dat.1))) %>%
+  arrange(time)
+
+dat.1$series_id <- "1"
+dat.1$series_id <- as.integer(dat.1$series_id)
+# Lag and cum rainfall effects on series 1
+
+dat.1 %>% mutate(lag_1 = lag(rainfall, 1),
+                 lag_2 = lag(rainfall, 2),
+                 lag_3 = lag(rainfall, 3)) %>%
+  pivot_longer(cols = starts_with("lag")) %>%
+  ggscatter(y = "flow", x = "value", add = "reg.line") +
+  stat_cor(label.y = 85000) +
+  stat_regline_equation(label.y = 80000) +
+  # ggplot(aes(y = flow, x = value)) +
+  # geom_point() +
+  facet_wrap(.~name, scales = "free") 
+
+#Adding lag and cum effect to series 1
+
+dat.1 %>% mutate(cum_rain2 = slide_vec(rainfall, mean, .before = 1),
+                 cum_rain3 = slide_vec(rainfall, mean, .before = 2),
+                 cum_rain4 = slide_vec(rainfall, mean, .before = 3),
+                 cum_rain5 = slide_vec(rainfall, mean, .before = 4),
+                 cum_rain6 = slide_vec(rainfall, mean, .before = 5)) %>%
+  pivot_longer(cols = starts_with("cum")) %>%
+  ggscatter(y = "flow", x = "value", add = "reg.line") +
+  stat_cor(label.y = 85000) +
+  stat_regline_equation(label.y = 78000) +
+  # ggplot(aes(y = flow, x = value)) +
+  # geom_point() +
+  # geom_smooth(method = "lm") +
+  facet_wrap(.~name, scales = "free")
+
+# Add lagged or cumulative rainfall to data
+dat.1 <- dat.1 %>% 
+  mutate(lag_1 = lag(rainfall, 1),
+         cum_rain5 = slide_vec(rainfall, mean, .before = 4))
+
+
+# SERIES 2 - Without pines
+
+df2 <- read_csv("Jonkershoek_SSM-main/Jonkershoek_SSM-main/data/Langrivier_Belfort_stream_flow_volume_March_1961_October_2008.csv")
+
+# Aggregate to monthly flows - SERIES 1
+m.df2 <- df2 %>% 
+  mutate(YearMon = format(Date, '%Y-%b')) %>%
+  group_by(YearMon) %>%
+  summarise(flow = sum(Value, na.rm = T))
+
+
+# Format date column, add season column for rainfall and join streamflow - SERIES 1
+dat.2 <- rain %>% mutate(YearMon = format(Date, '%Y-%b')) %>%
+  mutate(season = match(format(Date, '%b'), month.abb)) %>%
+  rename(rainfall = Value) %>%
+  select(YearMon, rainfall, season, Date) %>%
+  left_join(m.df2) %>%
+  na.omit() %>%
+  filter(flow > 0)
+
+# Add "time" as a numbered vector 1,2,3,etc
+
+dat.2 <- dat.2 %>%
+  mutate(time = rev(1:nrow(dat.2))) %>%
+  arrange(time)
+
+dat.2$series_id <- "2"
+dat.2$series_id <- as.integer(dat.2$series_id)
+
+#Adding lag and cum effect to series 2
+
+dat.2 %>% mutate(lag_1 = lag(rainfall, 1),
+                 lag_2 = lag(rainfall, 2),
+                 lag_3 = lag(rainfall, 3)) %>%
+  pivot_longer(cols = starts_with("lag")) %>%
+  ggscatter(y = "flow", x = "value", add = "reg.line") +
+  stat_cor(label.y = 85000) +
+  stat_regline_equation(label.y = 80000) +
+  # ggplot(aes(y = flow, x = value)) +
+  # geom_point() +
+  facet_wrap(.~name, scales = "free") 
+
+
+dat.2 %>% mutate(cum_rain2 = slide_vec(rainfall, mean, .before = 1),
+                 cum_rain3 = slide_vec(rainfall, mean, .before = 2),
+                 cum_rain4 = slide_vec(rainfall, mean, .before = 3),
+                 cum_rain5 = slide_vec(rainfall, mean, .before = 4),
+                 cum_rain6 = slide_vec(rainfall, mean, .before = 5)) %>%
+  pivot_longer(cols = starts_with("cum")) %>%
+  ggscatter(y = "flow", x = "value", add = "reg.line") +
+  stat_cor(label.y = 85000) +
+  stat_regline_equation(label.y = 78000) +
+  # ggplot(aes(y = flow, x = value)) +
+  # geom_point() +
+  # geom_smooth(method = "lm") +
+  facet_wrap(.~name, scales = "free")
+
+# Add lagged or cumulative rainfall to data
+dat.2 <- dat.2 %>% 
+  mutate(lag_2 = lag(rainfall, 1),
+         cum_rain5 = slide_vec(rainfall, mean, .before = 4))
+
+
+# Creating the training and test data sets for the time series models
+
+dat.s <- bind_rows(dat.1, dat.2)
+
+d.train.s <- bind_rows(
+  slice(dat.s, 1:129), 
+  slice(dat.s, 718:846))  #Before pines
+d.test.s <- bind_rows(
+  slice(dat.s, 130:142), 
+  slice(dat.s, 847:859))  # After pines
+
+sum(is.na(d.train.s))
+missing_rows <- which(is.na(d.train.s))
+missing_data <- d.train.s[missing_rows, ]
+print(missing_data)
+d.train.s <- na.omit(d.train.s)
+
+sum(is.na(d.test.s))
+missing_rows <- which(is.na(d.test.s))
+missing_data <- d.test.s[missing_rows, ]
+print(missing_data)
+d.test.s <- na.omit(d.test.s)
+
+
+# Assuming dat.s contains both series 1 and 2
+# Check unique series
+unique_series <- unique(dat.s$series_id)
+print(unique_series)  # Should print 1 and 2
+
+# Create trend_map assigning trends to each series
+trend_map <- data.frame(
+  series_id = unique_series,  # Should have 1 and 2
+  trend = c(1, 2)             # Assign different trends to series 1 and 2
+)
+
+print(trend_map)
+
 
 # Model
 
