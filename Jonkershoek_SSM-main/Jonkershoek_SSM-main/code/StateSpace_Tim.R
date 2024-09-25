@@ -223,7 +223,8 @@ dat.s <- bind_rows(dat.1, dat.2)
 
 d.train.s <- bind_rows(
   slice(dat.s, 1:129), 
-  slice(dat.s, 718:846))  #Before pines
+  slice(dat.s, 718:846))#Before pines
+
 d.test.s <- bind_rows(
   slice(dat.s, 130:142), 
   slice(dat.s, 847:859))  # After pines
@@ -273,6 +274,127 @@ mcmc_plot(baseline_model, type = "trace", variable = c("rainfall", "ar1[1]", "si
 plot(baseline_model, type = "forecast")
 summary(baseline_model)
 
+#guassian with seasonality
+
+season_model_g = mvgam(flow ~ rainfall + s(season, bs = "cc") ,
+                       trend_model = "AR1",
+                       family = gaussian(),
+                       data = data_train,
+                       newdata = data_test,
+                       noncentred = T,
+                       burnin = 5000,
+                       samples = 5000,
+                       thin = 9)
+
+pairs(season_model_g)
+mcmc_plot(season_model_g, type = "trace", variable = c("rainfall", "ar1[1]", "sigma[1]"))
+plot(season_model_g, type = "forecast")
+summary(season_model_g)
+
+#guassian with seasonality
+
+season_model_g = mvgam(flow ~ rainfall + s(season, bs = "cc") ,
+                       trend_model = "AR1",
+                       family = gaussian(),
+                       data = data_train,
+                       newdata = data_test,
+                       noncentred = T,
+                       burnin = 5000,
+                       samples = 5000,
+                       thin = 9)
+
+pairs(season_model_g)
+mcmc_plot(season_model_g, type = "trace", variable = c("rainfall")
+          , "ar1[1]", "sigma[1]"))
+plot(season_model_g, type = "forecast")
+summary(season_model_g)
+
+# gaussian with a smooth term
+
+rainfall_model_g = mvgam(flow ~ s(rainfall, bs = "cc"),
+                         trend_model = "AR1",
+                         family = gaussian(),
+                         data = data_train,
+                         newdata = data_test,
+                         noncentred = T,
+                         burnin = 5000,
+                         samples = 5000,
+                         thin = 9)
+
+pairs(rainfall_model_g)
+mcmc_plot(rainfall_model_g, type = "trace", variable = c("s(rainfall)_rho", "ar1[1]", "sigma[1]"))
+plot(rainfall_model_g, type = "forecast")
+summary(rainfall_model_g)
+
+# Guassian with smooth terms for the seasonality and rainfall
+
+mixed_model_g = mvgam(flow ~ s(rainfall, bs = "cc") + s(season, bs = "cc"),
+                      trend_model = "AR1",
+                      family = gaussian(),
+                      data = data_train,
+                      newdata = data_test,
+                      noncentred = T,
+                      burnin = 5000,
+                      samples = 5000,
+                      thin = 9)
+
+pairs(mixed_model_g)
+mcmc_plot(mixed_model_g, type = "trace", variable = c("s(rainfall)_rho", "s(season)_rho", "ar1[1]", "sigma[1]"))
+plot(mixed_model_g, type = "forecast")
+summary(mixed_model_g)
+
+# gaussian with different trend_models
+tread_model = mvgam(flow ~ rainfall ,
+                    trend_model = "AR3",
+                    family = gaussian(),
+                    data = data_train,
+                    newdata = data_test,
+                    noncentred = T,
+                    burnin = 5000,
+                    samples = 5000,
+                    thin = 9)
+?pairs
+pairs(baseline_model)
+mcmc_plot(baseline_model, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
+plot(baseline_model, type = "forecast")
+summary(baseline_model)
+
+#### Time series ####
+
+# attempt using guassian structure
+baseline_model_s = mvgam(flow ~ rainfall ,
+                         trend_model = "AR1",
+                         family = gaussian(),
+                         data = d.train.s,
+                         newdata = d.test.s,
+                         noncentred = T,
+                         burnin = 5000,
+                         samples = 5000,
+                         thin = 9)
+
+pairs(baseline_model_s)
+mcmc_plot(baseline_model_s, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
+plot(baseline_model_s, type = "forecast")
+summary(baseline_model_s)
+
+### Attempt using treand_map
+
+full_mod <- mvgam(flow ~ series_id -1 ,
+                  trend_formula = ~ rainfall,
+                  trend_model = "AR1",
+                  noncentred = TRUE,
+                  trend_map = trend_map,
+                  family = poisson(),
+                  data = d.train.s.1,
+                  silent = 2)
+
+pairs(full_mod)
+mcmc_plot(full_mod, type = "trace", variable = c("rainfall", "ar3[1]", "sigma[1]"))
+plot(full_mod, type = "forecast")
+summary(full_mod)
+
+
+
 # lognormal
 lognormal_model = mvgam(flow ~ rainfall,
                        trend_model = "AR1",
@@ -293,6 +415,70 @@ pp_check(lognormal_model, type = 'dens_overlay')
 pp_check(lognormal_model, type = 'pit_ecdf')
 summary(lognormal_model)
 mcmc_plot(lognormal_model, variable = c('rainfall'), regex = TRUE, type = 'areas')
+
+# lognormal with seasonality
+season_lognormal = mvgam(flow ~ rainfall+ s(season),
+                        trend_model = "AR1",
+                        family = lognormal(),
+                        data = data_train,
+                        newdata = data_test,
+                        noncentred = T,
+                        burnin = 5000,
+                        samples = 5000,
+                        adapt_delta = 0.9,
+                        thin = 9)
+
+pairs(season_lognormal)
+mcmc_plot(season_lognormal, type = "trace", variable = c("rainfall", "ar1[1]", "sigma[1]"))
+plot(season_lognormal, type = "forecast")
+plot(season_lognormal, type = 'residuals')
+pp_check(season_lognormal, type = 'dens_overlay')
+pp_check(season_lognormal, type = 'pit_ecdf')
+summary(season_lognormal)
+mcmc_plot(season_lognormal, variable = c('rainfall'), regex = TRUE, type = 'areas')
+
+# lognormal with a smooth term
+rainfall_lognormal = mvgam(flow ~ s(rainfall, bs = "cc"),
+                         trend_model = "AR1",
+                         family = lognormal(),
+                         data = data_train,
+                         newdata = data_test,
+                         noncentred = T,
+                         burnin = 5000,
+                         samples = 5000,
+                         adapt_delta = 0.9,
+                         thin = 9)
+
+pairs(rainfall_lognormal)
+mcmc_plot(rainfall_lognormal, type = "trace", variable = c("rainfall", "ar1[1]", "sigma[1]"))
+plot(rainfall_lognormal, type = "forecast")
+plot(rainfall_lognormal, type = 'residuals')
+pp_check(rainfall_lognormal, type = 'dens_overlay')
+pp_check(rainfall_lognormal, type = 'pit_ecdf')
+summary(rainfall_lognormal)
+mcmc_plot(rainfall_lognormal, variable = c('rainfall'), regex = TRUE, type = 'areas')
+
+# lognormal with a smooth term and season
+mixed_lognormal = mvgam(flow ~ s(rainfall, bs = "cc") + s(season, bs = "cc",
+                        k = 5),
+                           trend_model = "AR1",
+                           family = lognormal(),
+                           data = data_train,
+                           newdata = data_test,
+                           noncentred = T,
+                           burnin = 5000,
+                           samples = 5000,
+                           adapt_delta = 0.9,
+                           thin = 9)
+
+pairs(mixed_lognormal)
+mcmc_plot(mixed_lognormal, type = "trace", variable = c("rainfall", "ar1[1]", "sigma[1]"))
+plot(mixed_lognormal, type = "forecast")
+plot(mixed_lognormal, type = 'residuals')
+pp_check(mixed_lognormal, type = 'dens_overlay')
+pp_check(mixed_lognormal, type = 'pit_ecdf')
+summary(mixed_lognormal)
+mcmc_plot(mixed_lognormal, variable = c('rainfall'), regex = TRUE, type = 'areas')
 
 # lognormal dynamic model (i.e. time-varying predictors, i.e. a state space model)
 
@@ -315,6 +501,26 @@ pp_check(ldyn_model, type = 'pit_ecdf')
 summary(ldyn_model)
 mcmc_plot(ldyn_model, variable = c('rainfall'), regex = TRUE, type = 'areas')
 
+# lognormal dynamic model (i.e. time-varying predictors, i.e. a state space model) + season
+
+ldyn_model_season = mvgam(flow ~ dynamic(rainfall, k=40) + s(season, bs ="cc")
+                          trend_model = "AR1",
+                          family = lognormal(),
+                          data = data_train,
+                          newdata = data_test,
+                          noncentred = T,
+                          burnin = 1000,
+                          samples = 1000,
+                          adapt_delta = 0.9,
+                          thin = 2)
+
+mcmc_plot(ldyn_model, type = "trace", variable = c("rainfall", "ar1[1]", "sigma[1]"))
+plot(ldyn_model, type = "forecast")
+plot(ldyn_model, type = 'residuals')
+pp_check(ldyn_model, type = 'dens_overlay')
+pp_check(ldyn_model, type = 'pit_ecdf')
+summary(ldyn_model)
+mcmc_plot(ldyn_model, variable = c('rainfall'), regex = TRUE, type = 'areas')
 
 # lognormal dynamic model with cumulative rainfall over the previous 5 months (i.e. time-varying predictors, i.e. a state space model)
 
