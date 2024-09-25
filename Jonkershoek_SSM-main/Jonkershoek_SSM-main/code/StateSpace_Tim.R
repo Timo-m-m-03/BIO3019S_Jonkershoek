@@ -119,6 +119,7 @@ dat.1 <- dat.1 %>%
 
 dat.1$series_id <- "1"
 dat.1$series_id <- as.integer(dat.1$series_id)
+
 # Lag and cum rainfall effects on series 1
 
 dat.1 %>% mutate(lag_1 = lag(rainfall, 1),
@@ -131,8 +132,6 @@ dat.1 %>% mutate(lag_1 = lag(rainfall, 1),
   # ggplot(aes(y = flow, x = value)) +
   # geom_point() +
   facet_wrap(.~name, scales = "free") 
-
-#Adding lag and cum effect to series 1
 
 dat.1 %>% mutate(cum_rain2 = slide_vec(rainfall, mean, .before = 1),
                  cum_rain3 = slide_vec(rainfall, mean, .before = 2),
@@ -218,17 +217,19 @@ dat.2 <- dat.2 %>%
 
 
 # Creating the training and test data sets for the time series models
+?bind_rows
 
 dat.s <- bind_rows(dat.1, dat.2)
 
 d.train.s <- bind_rows(
   slice(dat.s, 1:129), 
-  slice(dat.s, 718:846))#Before pines
+  slice(dat.s, 359:487))#Before pines
 
 d.test.s <- bind_rows(
   slice(dat.s, 130:142), 
-  slice(dat.s, 847:859))  # After pines
+  slice(dat.s, 488:500))  # After pines
 
+# Trouble shooting: looking for any missing data points in any rows (there are none)
 sum(is.na(d.train.s))
 missing_rows <- which(is.na(d.train.s))
 missing_data <- d.train.s[missing_rows, ]
